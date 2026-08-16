@@ -23,9 +23,6 @@ importers:
       musicbrainz-api:
         specifier: ^1.2.1
         version: 1.2.1(supports-color@7.2.0)
-      openai:
-        specifier: ^7.3.0
-        version: 7.3.0(zod@3.25.76)
       zod:
         specifier: ^3.25.0
         version: 3.25.76
@@ -728,6 +725,7 @@ snapshots:
   openai@7.3.0(zod@3.25.76):
     optionalDependencies:
       zod: 3.25.76
+    optional: true
 
   p-finally@1.0.0: {}
 

@@ -56,7 +56,6 @@
     "@syncfm/ttml": "^0.1.0",
     "lrclib-api": "^2.0.4",
     "musicbrainz-api": "^1.2.1",
-    "openai": "^7.3.0",
     "zod": "^3.25.0"
   }
 }
