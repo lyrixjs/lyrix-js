@@ -4,6 +4,8 @@ import type { LyricsLine } from "../../providers/provider";
 import { createTranslationClient } from "./client";
 import { requestTranslation } from "./request";
 
+const TRANSLATION_BATCH_SIZE = 12;
+
 export async function translateLines(
 	lines: string[],
 	to: string,
@@ -17,13 +19,16 @@ export async function translateLines(
 	const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
 	if (nonEmptyLines.length === 0) return [...lines];
 
-	const translated = await requestTranslation(
-		nonEmptyLines,
-		to,
-		from,
-		config,
-		createTranslationClient(config),
-	);
+	const client = createTranslationClient(config);
+	const translated: string[] = [];
+	for (
+		let index = 0;
+		index < nonEmptyLines.length;
+		index += TRANSLATION_BATCH_SIZE
+	) {
+		const batch = nonEmptyLines.slice(index, index + TRANSLATION_BATCH_SIZE);
+		translated.push(...(await requestTranslation(batch, to, from, client)));
+	}
 
 	let cursor = 0;
 	return lines.map((line) => {

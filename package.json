@@ -51,9 +51,12 @@
   },
   "packageManager": "pnpm@11.18.0",
   "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/openai": "^0.5.0",
     "@syncfm/ttml": "^0.1.0",
     "lrclib-api": "^2.0.4",
     "musicbrainz-api": "^1.2.1",
-    "openai": "^7.3.0"
+    "openai": "^7.3.0",
+    "zod": "^3.25.0"
   }
 }

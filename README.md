@@ -77,6 +77,11 @@ console.log(result.lyrics.join("\n"));
 console.log(result.translatedLyrics!.join("\n"));
 ```
 
+Translations are requested in small batches using strict structured output,
+which preserves the number and order of lyric lines. The service retries failed
+batches and keeps the original source lines if the translation provider remains
+unavailable.
+
 ### Synced Lyrics
 
 ```ts
