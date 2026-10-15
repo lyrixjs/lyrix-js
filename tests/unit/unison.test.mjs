@@ -168,3 +168,39 @@ test("returns null when Unison request fails", async () => {
 
 	assert.equal(await unisonProvider.fetchLyrics(metadata), null);
 });
+
+test("handles undefined and negative duration in UnisonProvider", async () => {
+	let request;
+	mock.method(UnisonClient.prototype, "getLyrics", async (...args) => {
+		request = args;
+		return {
+			...baseResponse,
+			lyrics: "Line without duration",
+			format: "plain",
+			syncType: "plain",
+		};
+	});
+
+	await unisonProvider.fetchLyrics({ ...metadata, duration: undefined });
+	assert.equal(request[3], undefined);
+
+	await unisonProvider.fetchLyrics({ ...metadata, duration: -500 });
+	assert.equal(request[3], undefined);
+});
+
+test("parses lines without timestamps within LRC content", async () => {
+	mock.method(UnisonClient.prototype, "getLyrics", async () => ({
+		...baseResponse,
+		lyrics: "Untimed line without tag\n[00:01.00] Timed line",
+		format: "lrc",
+		syncType: "linesync",
+	}));
+
+	const result = await unisonProvider.fetchLyrics(metadata, { sync: true });
+	assert.ok(result);
+	assert.equal(result.synced, true);
+	assert.deepEqual(result.syncedLyrics, [
+		{ text: "Untimed line without tag" },
+		{ text: "Timed line", startTime: 1000 },
+	]);
+});

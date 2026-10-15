@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 import { Client } from "lrclib-api";
 import { LyrixClient } from "../../dist/core/client.js";
+import {
+	NoLyricsFoundError,
+	TranslationError,
+} from "../../dist/core/errors.js";
 import { provider as lrclibProvider } from "../../dist/providers/lrclib/api.js";
+import { FileCacheAdapter } from "../../dist/services/cache/file.js";
 import { MemoryCacheAdapter } from "../../dist/services/cache/memory.js";
 import { MetadataService } from "../../dist/services/metadata/service.js";
 import { TranslationService } from "../../dist/services/translation/service.js";
@@ -184,4 +189,88 @@ test("does not cache provider failures", async () => {
 
 	assert.equal(calls.unsynced, 2);
 	assert.deepEqual(result.lyrics, ["First line"]);
+});
+
+test("throws NoLyricsFoundError when metadata cannot be found", async () => {
+	mock.method(MetadataService, "getTrackMetadata", async () => null);
+
+	const client = new LyrixClient({
+		providers: [lrclibProvider],
+	});
+
+	await assert.rejects(
+		() => client.getLyrics({ trackName: "Nonexistent", artistName: "Ghost" }),
+		(err) =>
+			err instanceof NoLyricsFoundError &&
+			err.title === "Nonexistent" &&
+			err.artist === "Ghost" &&
+			err.message.includes('No lyrics found for "Nonexistent" by Ghost'),
+	);
+});
+
+test("throws NoLyricsFoundError when providers return null", async () => {
+	const calls = { metadata: 0 };
+	mockMetadata(calls);
+	mock.method(Client.prototype, "getUnsynced", async () => null);
+
+	const client = new LyrixClient({
+		providers: [lrclibProvider],
+	});
+
+	await assert.rejects(
+		() => client.getLyrics(track),
+		(err) => err instanceof NoLyricsFoundError,
+	);
+});
+
+test("throws TranslationError when translateTo is set without translation config", async () => {
+	const calls = { metadata: 0, unsynced: 0 };
+	mockMetadata(calls);
+	mockUnsynced(calls);
+
+	const client = new LyrixClient({
+		providers: [lrclibProvider],
+	});
+
+	await assert.rejects(
+		() => client.getLyrics(track, { translateTo: "es" }),
+		(err) =>
+			err instanceof TranslationError &&
+			err.message.includes("no API config was provided"),
+	);
+});
+
+test("resolves FileCacheAdapter when cache: true is specified", () => {
+	const client = new LyrixClient({
+		providers: [lrclibProvider],
+		cache: true,
+	});
+
+	assert.ok(client.cache instanceof FileCacheAdapter);
+});
+
+test("applies translation to plain unsynced lyrics without timestamps", async () => {
+	const calls = { metadata: 0, unsynced: 0 };
+	mockMetadata(calls);
+	mockUnsynced(calls);
+
+	mock.method(TranslationService, "translateLines", async () => [
+		"Primera línea",
+		"Segunda línea",
+	]);
+
+	const client = new LyrixClient({
+		providers: [lrclibProvider],
+	});
+
+	const result = await client.getLyrics(track, {
+		translateTo: "Spanish",
+		translation: { apiKey: "key", model: "model" },
+	});
+
+	assert.equal(result.synced, false);
+	assert.equal(result.syncedLyrics, undefined);
+	assert.deepEqual(result.lyrics, ["First line", "Second line"]);
+	assert.deepEqual(result.translatedLyrics, ["Primera línea", "Segunda línea"]);
+	assert.equal(result.translatedSyncedLyrics, undefined);
 });
