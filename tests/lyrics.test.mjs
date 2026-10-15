@@ -1,14 +1,29 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { setTimeout as sleep } from "node:timers/promises";
 import { provider as lrclibProvider } from "../dist/providers/lrclib/api.js";
 import { MetadataService } from "../dist/services/metadata/service.js";
 
 const url = "https://open.spotify.com/track/2AMysGXOe0zzZJMtH3Nizb";
 
+let cachedMetadata;
 async function getMetadata() {
-	const metadata = await MetadataService.getTrackMetadata({ url });
-	assert.ok(metadata);
-	return metadata;
+	if (!cachedMetadata) {
+		cachedMetadata = await MetadataService.getTrackMetadata({ url });
+	}
+	assert.ok(cachedMetadata);
+	return cachedMetadata;
+}
+
+async function fetchWithRetry(metadata, options, retries = 3, delayMs = 1500) {
+	for (let i = 0; i < retries; i++) {
+		const result = await lrclibProvider.fetchLyrics(metadata, options);
+		if (result) return result;
+		if (i < retries - 1) {
+			await sleep(delayMs);
+		}
+	}
+	return null;
 }
 
 function assertLyricsResult(result) {
@@ -20,7 +35,8 @@ function assertLyricsResult(result) {
 }
 
 test("gets unsynced lyrics from LRCLIB", async () => {
-	const result = await lrclibProvider.fetchLyrics(await getMetadata());
+	const metadata = await getMetadata();
+	const result = await fetchWithRetry(metadata);
 
 	assertLyricsResult(result);
 	assert.equal(result.synced, false);
@@ -28,7 +44,11 @@ test("gets unsynced lyrics from LRCLIB", async () => {
 });
 
 test("gets synced lyrics from LRCLIB", async () => {
-	const result = await lrclibProvider.fetchLyrics(await getMetadata(), {
+	// Respect rate limit between consecutive live requests to LRCLIB
+	await sleep(1500);
+
+	const metadata = await getMetadata();
+	const result = await fetchWithRetry(metadata, {
 		sync: true,
 	});
 

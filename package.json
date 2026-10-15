@@ -42,7 +42,10 @@
     "format:check": "biome format src tests examples",
     "lint": "biome lint src tests examples",
     "check": "biome check --write src tests examples",
-    "test": "pnpm build && node --test tests/unit/*.test.mjs tests/metadata.test.mjs tests/lyrics.test.mjs"
+    "test": "pnpm test:unit",
+    "test:unit": "pnpm build && node --test tests/unit/*.test.mjs",
+    "test:integration": "pnpm build && node --test tests/metadata.test.mjs tests/lyrics.test.mjs",
+    "test:all": "pnpm test:unit && pnpm test:integration"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6",
